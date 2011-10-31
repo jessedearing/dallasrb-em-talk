@@ -1,0 +1,276 @@
+!!! 5
+%html{lang: 'en'}
+  %head
+    %title="The Main Event...Machine"
+    %link{rel:"stylesheet", href: "deck.core.css", type:"text/css"}
+    %link{rel:"stylesheet", href:"themes/style/web-2.0.css", type:"text/css"}
+    %script{src:"modernizr-1.7.min.js"}
+  %body.deck-container
+    %section.slide
+      %h1 Now for the main event...
+    %section.slide
+      %h2 Who am I?
+      %p Jesse Dearing
+      %p Developer
+      %p
+        %a{href: "http://purecharity.com", target: "_blank"}
+          Pure Charity
+      %p
+        I blog at
+        %a{href: "http://jessedearing.com", target: "_blank"}
+          JesseDearing.com
+    %section.slide
+      %h2 What is event driven programming?
+      %ul
+        %li.slide Execution of the program is driven by events
+        %li.slide Synchronous but non-blocking (not truely asynchronous, but can be considered asynchronous with threads)
+        %li.slide Uses the Reactor Pattern
+    %section.slide
+      %h2 Isn't that like Node.js?
+      %p Yeah, but so is...
+      %ul
+        %li Twisted (Python)
+        %li MINA (Java)
+        %li AnyEvent (Perl)
+      %p Event driven frameworks are not new, they are just hot right now because of Node.js
+    %section.slide
+      %h2 The Reactor Pattern
+      %img{src: "iron.jpg"}
+      %p.slide Not that kind of reactor
+    %section.slide
+      %h2 The Reactor Pattern
+      %h3 Components
+      %ul
+        %li
+          Synchronous Event Demuliplexer
+          %ul
+            %li Sends the resource to the dispatcher when it can be processed can complete it in a synchronous manner.
+            %li Listens to Network, File System, Key presses, etc.
+        %li
+          Dispatcher
+          %ul
+            %li Registers and unregisters the request handlers. Routes the resource to the proper handler.
+        %li
+          Request Handler
+          %ul
+            %li This is the code we write
+            %li Accomplished mostly with callbacks
+    %section
+      .slide
+        %h2 The Reactor Pattern
+        %h3 Resturanut Analogy
+        %h4 Traditional (Buffet)
+        %img{src: "buffet.jpg"}
+        %p
+          Get up and go get your food from buffet. You are blocking because you
+          are solely focused on retreiving your foodstuffs.
+      .slide
+        %h2 The Reactor Pattern
+        %h3 Resturanut Analogy
+        %h4 Reactor (Waiter)
+        %img{src: "waiter.jpg"}
+        %p
+          Give your order to a waiter and you are free to carry on a conversation
+          or watch the game at the bar, etc.
+    %section.slide
+      %h2 Getting Started With EventMachine
+      %h3 The Event Loop
+      %pre
+        %code
+          :preserve
+            require 'eventmachine'
+
+            EM.run do
+              # A while(true) loop where your evented code runs
+            end
+    %section.slide
+      %h2 Getting Started With EventMachine
+      %h3 Things you can do in the event loop
+      %ul
+        %li
+          %code
+            EM.add_timer(seconds, &amp;block)
+          \- A one shot timer that executes the block in the specified number of seconds
+        %li
+          %code
+            EM.add_periodic_timer(seconds, &amp;block)
+          \- Like
+          %code add_timer
+          but repeats indefinitely
+        %li
+          %code
+            EM.start_server(server, port, handler, &amp;block)
+          \- Listens for input on a port and passes that input to the specified handler.
+        %li
+          %code
+            EM.stop
+          \- Stops the event loop after all callbacks in progress have completed
+    %section.slide
+      %h2 Getting Started With EventMachine
+      %h3 Rules of EventMachine
+      %ul
+        %li.slide Do not block the event loop
+        %li.slide
+          %strong Do not block the event loop
+        %li.slide All I/O should be done on the main thread
+        -# Jump into code example about what it means to block the event loop
+    %section.slide
+      %h2 Plugins
+      %p
+        There are a lot of plugins written for EventMachine that will allow you to write
+        evented code for WebSockets, XMPP, DNS, MySQL, Cassandra, MongoDB, Redis, and IRC just
+        to name a few.
+      %p
+        Libraries need to be written for EventMachine
+      %p.slide
+        Net::HTTP blocks
+      %p.slide
+        EM::HttpClient does not block
+    %section.slide
+      %h2 Tick tock
+      %ul
+        %li
+          %code next_tick
+          Schedules something to happen on the next iteration of the Reactor on
+          the main thread (regardless of where it is called)
+        %li
+          Useful if you are writing an evented library that is scheduling it's next action.
+          I.e. needs to retreive the next chunk from the buffer or check queues for new data to
+          process
+    %section.slide
+      %h2 Deferred Disposition
+      %p.slide
+        %img{src: "warning.png", style: "width: 48px; height: 48px;"}
+        Don't get EM.defer and EM::Deferrable confused. They are not really related.
+    %section.slide
+      %h2 Deferred Disposition
+      %p
+        EM.defer will pass the block given to a thread from the EventMachine thread pool
+      %p
+        There are 20 threads in the thread pool by default
+    %section.slide
+      %h2 EventMachine Helper Classes
+      %ul
+        %li
+          %code
+            EM::Queue
+          %br
+          A simple in memory queue with a callback on
+          %code
+            pop
+        %li
+          %code
+            EM::Channel
+          %br
+          A publish/subscribe mechanism to facilitate multicasting
+    %section.slide
+      %h2 EM::Queue
+      %p
+        Used for queuing data to be processed by another thread or in another tick of the event loop
+        %strong
+          Not like Resque or RabbitMQ
+      %p.slide
+        %code
+          pop
+        is single shot and then the callback is cleared, but the callback is only
+        called when the queue has at least one item to process
+    %section.slide
+      %h2 They Call Me The Queueopotamus
+      %p
+        %img{src: "rhymenoceros.png"}
+      %p My callbacks are bottomless...
+    %section.slide
+      %h2 They Call Me The Queueopotamus
+      %pre
+        %code
+          :preserve
+            EM.run do
+              q = EM::Queue.new
+
+              # Enqueue some data here...
+
+              popper = proc do |item|
+                # Do something with the enqueued item
+
+                # Pass this method address to be called next time an item
+                # needs to be processed
+                EM.next_tick { q.pop(&popper) }
+              end
+
+              # Set up the callback initially to be called
+              q.pop(&popper)
+            end
+    %section.slide
+      %h2 EM::Channel
+      %ul
+        %li
+          %code
+            subscribe(&amp;block)
+          \- Pass a proc to process messages received on the channel
+        %li
+          %code
+            unsubscribe(subscription_id)
+          \- Unsubscribe from a channel to longer process messages
+        %li
+          %code
+            \&lt;&lt;
+          \- Sends a message to all subscribers (publish)
+    %section.slide
+      %h2 EM::Channel
+      %pre
+        %code
+          :preserve
+            EM.run do
+              chan = EM::Channel.new
+
+              EM.defer do
+                c.subscribe {|p| puts "This just in: \#{p}" }
+              end
+
+              EM.add_periodic_timer(1) do
+                c &lt;&lt; "EventMachine rocks"
+              end
+            end
+    %section.slide
+      %h2 EM::Deferrable
+      %ul
+        %li
+          A lot of EventMachine libraries use
+          %code
+            EM::Deferrable
+          to let you set up success and failure callbacks
+        %li.slide
+          Deferrable has two callbacks:
+          %ul
+            %li
+              %code
+                callback
+              \- Executed when the
+              %code
+                succeed
+              method is called
+            %li
+              %code
+                errback
+              \- Executed when the
+              %code
+                fail
+              method is called
+        %li.slide
+          An example is an HTTP request
+          %pre
+            %code
+              :preserve
+                # Code example goes here
+
+
+
+    %script{src:"jquery-1.6.2.min.js"}
+    %script{src:"deck.core.js"}
+    %script{src:"extensions/hash/deck.hash.js"}
+    :javascript
+      $(function() {
+        // $.deck.defaults.keys.next = [];
+        // $.deck.defaults.keys.previous = [];
+        $.deck('.slide');
+      });
