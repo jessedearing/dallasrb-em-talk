@@ -231,7 +231,7 @@
         %code
           :preserve
             EM.run do
-              chan = EM::Channel.new
+              c = EM::Channel.new
 
               EM.defer do
                 c.subscribe {|p| puts "This just in: \#{p}" }
