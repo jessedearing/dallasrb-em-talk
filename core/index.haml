@@ -4,8 +4,17 @@
     %title="The Main Event...Machine"
     %link{rel:"stylesheet", href: "deck.core.css", type:"text/css"}
     %link{rel:"stylesheet", href:"themes/style/web-2.0.css", type:"text/css"}
+    %meta{name: "viewport", content: "width=1024, user-scalable=no" }
     %script{src:"modernizr-1.7.min.js"}
   %body.deck-container
+    %section.slide
+      %h1
+        Please go to
+        %a{href: "http://jessedearing.com/em", style: "font-size: 70px"}
+          http://jessedearing.com/em
+    %section.slide
+      %h2 Do not attempt to adjust your browser settings
+      %img{src: "outerlimits.jpg"}
     %section.slide
       %h1 Now for the main event...
     %section.slide
@@ -29,10 +38,10 @@
       %h2 Isn't that like Node.js?
       %p Yeah, but so is...
       %ul
-        %li Twisted (Python)
-        %li MINA (Java)
-        %li AnyEvent (Perl)
-      %p Event driven frameworks are not new, they are just hot right now because of Node.js
+        %li.slide Twisted (Python)
+        %li.slide MINA (Java)
+        %li.slide AnyEvent (Perl)
+      %p.slide Event driven frameworks are not new, they are just hot right now because of Node.js
     %section.slide
       %h2 The Reactor Pattern
       %img{src: "iron.jpg"}
@@ -41,16 +50,16 @@
       %h2 The Reactor Pattern
       %h3 Components
       %ul
-        %li
+        %li.slide
           Synchronous Event Demuliplexer
           %ul
             %li Sends the resource to the dispatcher when it can be processed can complete it in a synchronous manner.
             %li Listens to Network, File System, Key presses, etc.
-        %li
+        %li.slide
           Dispatcher
           %ul
             %li Registers and unregisters the request handlers. Routes the resource to the proper handler.
-        %li
+        %li.slide
           Request Handler
           %ul
             %li This is the code we write
@@ -81,7 +90,8 @@
             require 'eventmachine'
 
             EM.run do
-              # A while(true) loop where your evented code runs
+              # All your evented code goes here
+              # A while(true) loop is running where you plug your events into
             end
     %section.slide
       %h2 Getting Started With EventMachine
@@ -121,7 +131,7 @@
         evented code for WebSockets, XMPP, DNS, MySQL, Cassandra, MongoDB, Redis, and IRC just
         to name a few.
       %p
-        Libraries need to be written for EventMachine
+        Libraries need to be written for EventMachine to be non-blocking
       %p.slide
         Net::HTTP blocks
       %p.slide
@@ -256,21 +266,148 @@
               %code
                 fail
               method is called
-        %li.slide
-          An example is an HTTP request
-          %pre
-            %code
-              :preserve
-                # Code example goes here
+    %section.slide
+      %h2 EM::Deferrable
+      An example is an HTTP request
+      %pre
+        %code
+          :preserve
+            require 'eventmachine'
+            require 'em-http-request'
 
+            EM.run do
+              http = EM::HttpRequest.new("http://www.google.com/").get
+              http.callback do
+                puts "Status: \#{http.response_header.status}"
+                puts "Headers: \#{http.response_header.inspect}"
+                puts "Content:"
+                puts http.response
+                EM.stop
+              end
 
+              http.errback do
+                puts "there was an error"
+                EM.stop
+              end
+            end
+    %section.slide
+      %h2 Advanced EventMachine
+      %h3 Ruby Fibers (1.9 only)
+      %p
+        Allows for lightweight concurrency in applications by allowing applications to yield and resume execution.
+      %pre
+        %code
+          :preserve
+            # Via Mathias Meyer
+            Fiber.new do
+              f = Fiber.current
+              request = EM::HttpRequest.new('http://jsonip.com').get
+              request.callback {f.resume(request)}
+              request.errback  {f.resume(request)}
+              puts Fiber.yield.response
+            end.resume
+    %section.slide
+      %h2 Advanced EventMachine
+      %img{src: "bill_fibers.jpg"}
+    %section.slide
+      %h2 Advanced EventMachine
+      %h3 em-synchrony
+      %p Utilizes Fibers to make code seem synchronous
+    %section.slide
+      %h2 Advanced EventMachine
+      %h3 em-synchrony
+      %pre
+        %code
+          :preserve
+            require "lib/em-synchrony"
+            require "net/http"
+
+            $VERBOSE = nil
+
+            EM.synchrony do
+              # monkey patch default Socket code to use EventMachine Sockets instead
+              TCPSocket = EventMachine::Synchrony::TCPSocket
+
+              Net::HTTP.get_print 'www.google.com', '/index.html'
+
+              EM.stop
+            end
+    %section.slide
+      %h2 Advanced EventMachine
+      %h3 Goliath
+      %p A web server that utilizes fibers to serve non-blocking requests
+    %section.slide
+      %h2 Advanced EventMachine
+      %h3 Goliath
+      %pre
+        %code
+          :preserve
+            class Echo < Goliath::API
+              use Goliath::Rack::Tracer             # log trace statistics
+              use Goliath::Rack::DefaultMimeType    # cleanup accepted media types
+              use Goliath::Rack::Render, 'json'     # auto-negotiate response format
+              use Goliath::Rack::Params             # parse & merge query and body parameters
+              use Goliath::Rack::Heartbeat          # respond to /status with 200, OK (monitoring, etc)
+
+              # If you are using Golaith version <=0.9.1 you need to Goliath::Rack::ValidationError
+              # to prevent the request from remaining open after an error occurs
+              #use Goliath::Rack::ValidationError
+              use Goliath::Rack::Validation::RequestMethod, %w(GET POST)           # allow GET and POST requests only
+              use Goliath::Rack::Validation::RequiredParam, {:key => 'echo'}  # must provide ?echo= query or body param
+
+              plugin Goliath::Plugin::Latency       # output reactor latency every second
+
+              def process_request
+                logger.info "Processing request"
+
+                {response: env.params['echo']}
+              end
+
+              def response(env)
+                [200, {}, process_request]
+              end
+            end
+    %section.slide
+      %h2 Code Walkthrough
+      %p Let's look at the code that brought you this presentation
+      %p
+        %a{href: "http://github.com/jessedearing/dallasrb-em-talk", target: "_blank"}
+          Github
+
+    %section.slide
+      %h2 Let's Build an Echo Server
+      %p The "Hello World" of network programs
+
+    %section.slide
+      %h1
+        Thanks!
 
     %script{src:"jquery-1.6.2.min.js"}
     %script{src:"deck.core.js"}
     %script{src:"extensions/hash/deck.hash.js"}
     :javascript
       $(function() {
-        // $.deck.defaults.keys.next = [];
-        // $.deck.defaults.keys.previous = [];
-        $.deck('.slide');
+        var presenter = true;
+        //var presenter = false;
+        if(!presenter) {
+          var wsUri = "ws://jessedearing:8080/";
+          var webSock = new WebSocket(wsUri);
+          webSock.onmessage = function(evt) {
+            $.deck('go', $.parseJSON(evt.data).slide_number);
+          };
+          $.deck.defaults.keys.next = [];
+          $.deck.defaults.keys.previous = [];
+        }
+        else {
+          $(document).unbind('keydown.em').bind('keydown.em', function(e) {
+            if(e.which === $.deck.defaults.keys.next || $.inArray(e.which, $.deck.defaults.keys.next) > -1) {
+              $.get("http://localhost:9000/forward");
+            }
+            else if(e.which === $.deck.defaults.keys.previous || $.inArray(e.which, $.deck.defaults.keys.previous) > -1) {
+              $.get("http://localhost:9000/back");
+            }
+          });
+        }
+        $.deck('.slide')
+        $('.deck-container').unbind('touchstart.deck').unbind('touchmove.deck').unbind('touchend.deck');
       });
