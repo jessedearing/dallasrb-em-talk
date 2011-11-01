@@ -10,8 +10,8 @@
     %section.slide
       %h1
         Please go to
-        %a{href: "http://jessedearing.com/em", style: "font-size: 70px"}
-          http://jessedearing.com/em
+        %a{href: "http://em.jessedearing.com", style: "font-size: 70px"}
+          http://em.jessedearing.com
     %section.slide
       %h2 Do not attempt to adjust your browser settings
       %img{src: "outerlimits.jpg"}
@@ -388,12 +388,21 @@
     :javascript
       $(function() {
         var presenter = true;
-        //var presenter = false;
         if(!presenter) {
           var wsUri = "ws://jessedearing:8080/";
           var webSock = new WebSocket(wsUri);
+          var wsConnected = false;
+          webSock.onopen = function() {
+            wsConnected = true;
+          };
           webSock.onmessage = function(evt) {
             $.deck('go', $.parseJSON(evt.data).slide_number);
+          };
+          webSock.onerror = function(evt) {
+            window.location.reload();
+          };
+          webSock.onclose = function() {
+            window.location.reload();
           };
           $.deck.defaults.keys.next = [];
           $.deck.defaults.keys.previous = [];
